@@ -1,46 +1,39 @@
 use crate::vingere::vigenere_decrypt;
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Index};
 
 // Define English letter frequency table
 const ENGLISH_LETTER_FREQUENCY: [f64; 26] = [
-    0.0817, 0.0149, 0.0278, 0.0425, 0.127, 0.0223, 0.0202, 0.0609, 0.0697, 0.0015, 0.0077, 0.0402,
-    0.0241, 0.0675, 0.0751, 0.0193, 0.0009, 0.0599, 0.0633, 0.0906, 0.0276, 0.0098, 0.0236, 0.0015,
-    0.0197, 0.0007,
+    0.64297, 0.11746, 0.21902, 0.33483, 1.00000, 0.17541, 0.15864, 0.47977, 0.54842, 0.01205,
+    0.06078, 0.31688, 0.18942, 0.53133, 0.59101, 0.15187, 0.00748, 0.47134, 0.49811, 0.71296,
+    0.21713, 0.07700, 0.18580, 0.01181, 0.15541, 0.00583,
 ];
 
-// Calculate chi-square statistic
-fn chi_square(text: &str) -> f64 {
-    let observed_frequencies = letter_frequencies(text);
-    let mut chi_square = 0.0;
-    for (i, &observed_freq) in observed_frequencies.iter().enumerate() {
-        let expected_freq = ENGLISH_LETTER_FREQUENCY[i] * text.len() as f64;
-        chi_square += (observed_freq as f64 - expected_freq).powi(2) / expected_freq;
-    }
-    chi_square
-}
-
-// Calculate letter frequencies in text
-fn letter_frequencies(text: &str) -> Vec<u32> {
-    let mut frequencies = vec![0; 26];
-    for c in text.chars().filter(|c| c.is_ascii_alphabetic()) {
-        let index = (c.to_ascii_lowercase() as u8 - b'a') as usize;
-        frequencies[index] += 1;
-    }
-    frequencies
-}
-
 // Score the likelihood of text being English
-fn english_score(text: &str) -> f64 {
-    1.0 / (1.0 + chi_square(text))
+pub fn english_score(text: &str) -> f64 {
+    if let Some(x) = text
+        .to_lowercase()
+        .chars()
+        .map(|x| {
+            if x.is_alphanumeric() {
+                ENGLISH_LETTER_FREQUENCY[(x as u8 - b'a') as usize]
+            } else {
+                0.0
+            }
+        })
+        .reduce(|x, y| x + y)
+    {
+        x
+    } else {
+        0.0
+    }
 }
 
 // Test the likelihood of resulting strings
-pub fn test_english_likelihood(results: &[(String, String)]) -> Vec<(String, f64)> {
+pub fn test_english_likelihood(results: &[String]) -> Vec<(String, f64)> {
     results
         .iter()
-        .map(|(text, key)| {
-            let decrypted_text = vigenere_decrypt(text.clone(), key.clone());
-            (decrypted_text.to_owned(), english_score(&decrypted_text))
+        .map(|text| {
+            (text.to_owned(), english_score(&text))
         })
         .collect()
 }
